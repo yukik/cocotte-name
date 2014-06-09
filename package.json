@@ -1,0 +1,23 @@
+{
+  "name": "cocotte-name",
+  "description": "property name check",
+  "homepage": "https://github.com/yukik/cocotte-name",
+  "keywords": ["cocotte", "tools", "m2r"],
+  "author": "Yuki Kurata <yuki.kurata@gmail.com>",
+  "dependencies": {},
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/yukik/cocotte-name.git"
+  },
+  "main": "name.js",
+  "version": "0.1.0",
+  "scripts": {
+    "test": "node ./test/test.js"
+  },
+  "directories": {
+    "test": "test"
+  },
+  "readmeFilename": "README.md",
+  "license": "MIT"
+}
