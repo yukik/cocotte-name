@@ -63,12 +63,12 @@ var EVENTEMITTER = '_events,domain,_maxListeners,setMaxListeners,emit,' +
 
 var PLUGINS = '$,_,requirejs,define';
 
+// 予約語の為にフィールド名、プロパティ名、
 var KEYWORDS = (CLIENT_CLASSES + CLIENT_OBJECT +
                 CORE_CLASSES + GLOBAL_FUNCTIONS + RESERVED +
                 STRICT_WORD + ES5 + ES6_OVER + LITERALS +
                 NODE_JS + EVENTEMITTER + PLUGINS
                 ).split(',').sort();
-
 
 // 重複チェック
 // console.log(KEYWORDS.filter(function(x,i,a){return a.indexOf(x) !== i;}));
@@ -77,46 +77,197 @@ var KEYWORDS = (CLIENT_CLASSES + CLIENT_OBJECT +
 // 全表示 README用
 // KEYWORDS.forEach(function(x){console.log('  + ' + x);});
 
-var REG = /^[a-z]([_0-9a-z]{0,30}[0-9a-z])?$/i;
+/**
+ * 名称系のルール
+ * @property {RegExp} REG_NAME
+ */
+var REG_NAME = /^[a-z]([_0-9a-z]{0,30}[0-9a-z])?$/i;
+
 
 /**
- * 名称確認
+ * 予約語かどうかを検証します
+ * 検証に失敗した場合は例外が発生します
  * @method nameCheck
- * @param  {String}  value
- * @param  {Boolean} output
- * @return {Boolean} result
+ * @param  {String}   value
+ * @param  {Boolean}  output   例外のかわりにfalseを出力します
+ * @param  {String}   errName  ※隠し引数 エラーメッセージでの値の種類の名称を指定
+ * @param  {Regexp}   reg      ※隠し引数 個別に使用する正規表現
+ * @param  {Function} regCall  ※隠し引数 正規表現をパスした際にマッチさせた配列を検証する関数
+ * @param  {Array}    invalids ※隠し引数 個別に予約後とする配列
+ * @return {Boolean}  result
  */
-function nameCheck (value, output) {
-  var err;
+function nameCheck (name, output) {
 
-  // 文字列ではない
-  if (typeof value !== 'string') {
-    if (output) {
-      return false;
-    }
-    err = new TypeError('文字列ではありません');
+  var err;
+  var errName = arguments[2] || '入力値';
+
+  // 未設定
+  if (name === void 0) {
+    if (output) {return false;}
+    err = new TypeError(errName + 'が未設定です');
+    err.hint = 'undefined';
     throw err;
   }
 
-  // フォーマットエラー
-  if (!REG.test(value)) {
-    if (output) {
-      return false;
-    }
-    err = new TypeError('フォーマットエラーです');
+  // 文字列違反
+  if (typeof name !== 'string') {
+    if (output) {return false;}
+    err = new TypeError(name + 'は文字列ではありません');
+    err.hint = 'type';
+    throw err;
+  }
+
+  // 正規表現
+  var reg = arguments[3] || REG_NAME;
+  var matches = name.match(reg);
+  if (!matches) {
+    if (output) {return false;}
+    err = new Error(name + 'は' + errName + 'に使用出来ない名称です');
+    err.hint = 'regexp';
+    throw err;
+  }
+
+  // 正規表現の結果をコールバック関数で検証
+  var regCall = arguments[4];
+  if (regCall && !regCall(matches)) {
+    if (output) {return false;}
+    err = new Error(name + 'は' + errName + 'に使用出来ない名称です');
+    err.hint = 'regcall';
+    throw err;
+  }
+
+  // 無効な名称
+  var invalids = arguments[5];
+  if (invalids && ~invalids.indexOf(name)) {
+    if (output) {return false;}
+    err = new Error(name + 'は' + errName + 'に使用出来ない名称です');
+    err.hint = 'invalids';
     throw err;
   }
 
   // 予約語
-  if (~KEYWORDS.indexOf(value)) {
-    if (output) {
-      return false;
-    }
+  if (~KEYWORDS.indexOf(name)) {
+    if (output) {return false;}
     err = new Error('予約語です');
+    err.hint = 'keywords';
     throw err;
   }
 
   return true;
+}
+
+/**
+ * データソース名の検証
+ * @method datasource
+ * @param  {String}   value
+ */
+nameCheck.datasource = datasourceNameCheck;
+function datasourceNameCheck (name) {
+  var output = 2 <= arguments.length ? arguments[1] : false;
+  nameCheck(name, output, 'データソース名');
+}
+
+/**
+ * ダイアグラムの拡張メソッドやプロパティ名の検証
+ * @method diagramExtend
+ * @param  {String}   name
+ */
+nameCheck.diagramExtend = diagramExtendNameCheck;
+function diagramExtendNameCheck (name) {
+  var output = 2 <= arguments.length ? arguments[1] : false;
+  nameCheck(name, output, 'ダイアグラム拡張機能名');
+}
+
+/**
+ * フィールド名の検証
+ * @method field
+ * @param  {String}  name
+ */
+nameCheck.field = fieldNameCheck;
+function fieldNameCheck (name) {
+  var output = 2 <= arguments.length ? arguments[1] : false;
+  nameCheck(name, output, 'フィールド名');
+}
+
+/**
+ * バインディングルール
+ * @property {RegExp} REG_BINDING
+ */
+var REG_BINDING = /^(\$)?[a-z]([_0-9a-z]{0,30}[0-9a-z])?(\$[a-z]{1,32})?$/i;
+
+/**
+ * バインディングルール２
+ * @method bindingRegCall
+ * @param  {Array}   matches
+ * @return {Boolean} result
+ */
+function bindingRegCall (matches) {
+  return !(matches[1] && matches[3]);
+}
+
+/**
+ * ダイアグラムスコープでthisを追加するかどうかを確認
+ * @method vmDiagram
+ * @param  {String}  name
+ * @return {Boolean} result
+ */
+nameCheck.vmDiagram = vmDiagramNameCheck;
+var DIA_SCOPE = ['$vm'];
+function vmDiagramNameCheck (name) {
+  var output = 2 <= arguments.length ? arguments[1] : true;
+  return nameCheck(name, output, null, REG_BINDING, bindingRegCall, DIA_SCOPE);
+}
+
+/**
+ * データソーススコープでthisを追加するかどうかを確認
+ * @method vmDatasource
+ * @param  {String}  name
+ * @return {Boolean} result
+ */
+nameCheck.vmDatasource = vmDatasourceNameCheck;
+var DS_SCOPE = ['$diagram', '$vm'];
+function vmDatasourceNameCheck (name) {
+  var output = 2 <= arguments.length ? arguments[1] : true;
+  return nameCheck(name, output, null, REG_BINDING, bindingRegCall, DS_SCOPE);
+}
+
+/**
+ * 行スコープでthisを追加するかどうかを確認
+ * @method vmRow
+ * @param  {String}  name
+ * @return {Boolean} result
+ */
+nameCheck.vmRow = vmRowNameCheck;
+var ROW_SCOPE = ['$diagram', '$vm'];
+function vmRowNameCheck (name) {
+  var output = 2 <= arguments.length ? arguments[1] : true;
+  return nameCheck(name, output, null, REG_BINDING, bindingRegCall, ROW_SCOPE);
+}
+
+/**
+ * アイテムスコープでthisを追加するかどうかを確認
+ * @method vmItem
+ * @param  {String}  name
+ * @return {Boolean} result
+ */
+nameCheck.vmItem = vmItemNameCheck;
+var ITEM_SCOPE = ['$diagram', '$vm'];
+function vmItemNameCheck (name) {
+  var output = 2 <= arguments.length ? arguments[1] : true;
+  return nameCheck(name, output, null, REG_BINDING, bindingRegCall, ITEM_SCOPE);
+}
+
+/**
+ * フィールドスコープでthisを追加するかどうかを確認
+ * @method vmField
+ * @param  {String}  name
+ * @return {Boolean} result
+ */
+nameCheck.vmField = vmFieldNameCheck;
+var FIELD_SCOPE = ['$diagram', '$vm'];
+function vmFieldNameCheck (name) {
+  var output = 2 <= arguments.length ? arguments[1] : true;
+  return nameCheck(name, output, null, REG_BINDING, bindingRegCall, FIELD_SCOPE);
 }
 
 module.exports = exports = nameCheck;
