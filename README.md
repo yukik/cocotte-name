@@ -1,9 +1,7 @@
 cocotte-name
 ============
 
-property name check
-
-変数名が使用可能かを確認します。  
+変数名が使用可能であるかを確認します。  
 このモジュールは、viewで処理を記述する際に使用できるフィールドを指定するために使用します。
 
 # 条件
@@ -13,7 +11,8 @@ property name check
   + 後述する予約語ではない
   + 半角英数文字と_で構成される
   + 英字で始まる
-  + _を最後にする事はできない
+  + _を最初または最後にする事はできない
+  + __を含む事はできない
   + 1文字以上32文字以内である
 
 
@@ -27,6 +26,9 @@ var nameCheck = require('cocotte-name');
 nameCheck('abc');  // pass
 nameCheck('123');  // throw error
 nameCheck('ab_c'); // pass
+nameCheck('_ab');  // throw error
+nameCheck('ab_c'); // pass
+nameCheck('ab__c');// throw error
 nameCheck('ab_');  // throw error
 nameCheck('');     // throw error
 nameCheck('abcdefghijabcdefghijabcdefghijabcdefghij'); // throw error
@@ -45,7 +47,7 @@ if (nameCheck('abc', true)) {
 
 # 予約語
 
-次の単語は名称に使用出来ません
+次の単語は予約後です。名称に使用出来ません
 
   + $
   + ApplicationCache
@@ -205,7 +207,6 @@ if (nameCheck('abc', true)) {
   + decodeURI
   + decodeURIComponent
   + default
-  + define
   + delete
   + do
   + document
@@ -258,7 +259,6 @@ if (nameCheck('abc', true)) {
   + removeAllListeners
   + removeListener
   + require
-  + requirejs
   + return
   + root
   + setImmediate
